@@ -1,143 +1,53 @@
+import config
 import dht
 from machine import PWM,ADC,Pin,Timer,reset,reset_cause
+from math import trunc
 import time
-from blink import blink
-import json
-from umqtt.simple import MQTTClient
 import network
+import json
 from gc import mem_free
-from publish import publish
+
+def version():
+    return "3"
 
 class Sensor:
 
-    ap = network.WLAN(network.AP_IF)
-    ap.active(False)
-    wlan = network.WLAN(network.STA_IF)
-    wlan.active(True)
-
-    clock = time.time
-    lastblink = time.time()
-    CallBlink = blink
-    Callmemfree = mem_free
-    Callpublish = publish
-    mqttclient = MQTTClient
-    name = ""
-    basetopic = ""
-    usingmqtt = False
-    mqttconnected = False
-    publishing = False
-    lastmqttretry = time.time() - 15 
-    
     list = []
+    clock = time.time
+    Callmemfree = mem_free
     statechange = False
-    lastheartbeat = time.time()
     lastminute = 0
     lasthour = 0
-    ledonval = True
+    lastblink = time.time()
     statusled = Pin(2,Pin.OUT)
-    initfound = False
+    wlan = network.WLAN(network.STA_IF)
 
-    def mqtt_callback(topic, msg):
-        #print(topic, msg)
-        if Sensor.initfound and "/init" in topic:
-            return
-        if not Sensor.initfound:
-            Sensor.initfound = True
-        try:
-            jdata = json.loads(msg)
-            #print("jdata: ", jdata)
-            if "heartbeat" in jdata:
-                Sensor.lastheartbeat = time.time()
-                Sensor.lastminute = int(jdata["Minute"])
-                Sensor.lasthour = int(jdata["Hour"])
-                #print("hearbeat set: ", time.time())
-                return
-            if "reset" in jdata:
-                print("MQTT Reset")
-                time.sleep(1)
-                reset()
-            for s in Sensor.list:
-                if s.name in jdata:
-                    val = jdata[s.name]
-                    if type(0) == type(s.value):
-                        s.setvalue(int(val))
-                        continue
-                    if type(0.0) == type(s.value):
-                        s.setvalue(float(val))
-                        continue
-                    if val == "ON" or val == "on":
-                        s.setstate(True)
-                        continue
-                    if val == "OFF" or val == "off":
-                        s.setstate(False)
-                        continue
-                    s.setvalue(jdata[s.name])
-        except:
-            pass
+    def blink():
+        led = Sensor.statusled.value()
+        Sensor.statusled.value(not led)
+        time.sleep_ms(80)
+        Sensor.statusled.value(led)
+        time.sleep_ms(150)
+        Sensor.statusled.value(not led)
+        time.sleep_ms(80)
+        Sensor.statusled.value(led)
 
-    def MQTTConnect():
-        if time.time() - Sensor.lastmqttretry > 10:
-            Sensor.lastmqttretry = time.time()
-            try:
-                Sensor.mqttclient.connect(clean_session=True)
-                Sensor.mqttclient.subscribe(Sensor.basetopic+"heartbeat")
-                Sensor.mqttclient.subscribe(Sensor.basetopic+Sensor.name+"/init")
-                Sensor.mqttclient.subscribe(Sensor.basetopic+Sensor.name+"/set")
-                #print("Connected to MQTT topics /heartbeat /init /set")
-                Sensor.lastheartbeat = time.time()
-                return True
-            except:
-                #print("MQTTConnect failed ...")
-                return False
+    def UPTIME(self, devnull=None):
+        self.setvalue(Sensor.clock() - uptime.diff)
 
-    def MQTTSetup(name="test", basetopic="basetopicname/", server="192.168.x.x", mqttuser="xxxxxx", mqttpass="xxxxxx"):
-        Sensor.basetopic = basetopic
-        Sensor.name = name
-        Sensor.usingmqtt = True
-        Sensor.mqttclient = MQTTClient(name, server, user=mqttuser, password=mqttpass)
-        Sensor.mqttclient.set_callback(Sensor.mqtt_callback)
-
-    def Spin():
-        if time.time() - Sensor.lastblink > 8:
-            Sensor.CallBlink(Sensor.statusled, Sensor.ledonval)
-            Sensor.lastblink = time.time()
-
-        if not Sensor.mqttconnected:
-            Sensor.mqttconnected = Sensor.MQTTConnect()
-
-        try:
-            if Sensor.mqttconnected:
-                Sensor.mqttclient.check_msg()
-                Sensor.Callpublish(Sensor.mqttclient, Sensor.basetopic, Sensor.name, Sensor.list)
-        except:
-            #print("Error in checkmsg or publish, will reconnect ...")
-            Sensor.mqttconnected = False
-        
-        if time.time() - Sensor.lastheartbeat > 200:
-            #print("Hearbeat lost after 200 seconds, will reconnect ...")
-            Sensor.mqttconnected = False
-
-
-    def UPTIME(self):
-        global uptime
-        uptime.setvalue(Sensor.clock() - uptime.diff)
-
-    def MEMFREE(self):
+    def MEMFREE(self, devnull=None):
         global memfree
         newmemfree = Sensor.Callmemfree()
         if (memfree.value - newmemfree) > memfree.diff:
             memfree.setvalue(newmemfree)
 
-    def RSSI(self):
+    def RSSI(self, devnull=None):
         global wifi
         t = Sensor.wlan.status('rssi')
         if t < 0:
             wifi.values.pop()
             wifi.values.insert(0,t)
-            sum = 0
-            for i in wifi.values:
-                sum = sum + i
-            avg = int(sum / 3)
+            avg = int(sum(wifi.values)/len(wifi.values))
             if abs(avg - wifi.value) > wifi.diff:
                 wifi.setvalue(avg)
 
@@ -190,35 +100,64 @@ class Sensor:
             print("DHT read error: " + str(e))
 
     def ADC(self, devnull):
-        newvalue = self.pin.read()
-        #self.publish = [[self.name , self.value]]
-        if abs(self.value - newvalue) > self.diff:
-            self.setvalue(newvalue)
+        new = round(self.pin.read() * self.k,3)
+        if new < 0:
+            new = 0
+        if abs(self.value - new) > self.diff:
+            self.setvalue(new)
     
     def PWM(self, newvalue=0):
-       self.setvalue(newvalue) 
+        self.setvalue(newvalue) 
 
-    def __init__(self, name, mode="VS", pin=-1, poll=None, diff=0, onname="ON", offname="OFF", callback=None, initval=None, save=False): 
+    def AMP(self, devnull=None, setinitval=False):
+        new = round(self.read_register(0x04) * self.k,3)
+        if new < 0:
+            new = 0
+        if setinitval or abs(self.value - new) > self.diff:
+            self.setvalue(new)
+
+    def write_register(self, register, register_value):
+        register_bytes = bytearray([(register_value >> 8) & 0xFF, register_value & 0xFF])
+        self.pin.writeto_mem(self.address, register, register_bytes)
+
+    def read_register(self, register):
+        register_bytes = self.pin.readfrom_mem(self.address, register, 2)
+        register_value = int.from_bytes(register_bytes, 'big')
+        if register_value > 32767:
+            register_value -= 65536
+        return register_value
+
+    def __init__(self, name, mode="VS", pin=-1, poll=None, diff=0, onname="ON", offname="OFF", callback=None, initval=None, save=False, topic=None): 
         
         #print("Setup for: " + name + " as " + mode)
         
-        modesetup = {"IN":self.IN, "INP":self.IN, "ADC":self.ADC, "VS":self.VS, "DHT":self.DHT, "OUT":self.OUT, "PWM":self.PWM } 
+        modesetup = {"RSSI":self.RSSI, "UPTIME":self.UPTIME, "MEMFREE":self.MEMFREE, "IN":self.IN, "INP":self.IN, "ADC":self.ADC, "VS":self.VS, "DHT":self.DHT, "OUT":self.OUT, "PWM":self.PWM, "AMP":self.AMP, "MQTT":None } 
         
         self.name = name               # mqtt name of value to publish
         self.state = False
         self.onname = onname
         self.offname = offname
+        self.k = 1.0
         self.diff = diff
-        self.value = initval
-        self.values = [initval, initval, initval]
-        self.save = save
         self.mode = mode
+        self.setvalue(initval)
+        self.values = [initval]*10
+        self.save = save
         self.poll = poll
         self.callback = callback if (callback is not None) else modesetup.get(mode)
         self.pin = pin
+        self.topic = topic
         
         self.pubneeded = True
         self.triggered = False 
+
+        if self.mode == "AMP":
+            self.address = 0x40
+            self.write_register(0x05, 16793)
+            self.write_register(0, 2463)
+            self.k = 0.0000214292
+            self.AMP(None, setinitval=True)
+            print("Setup INA219, Value: ", self.value)
         
         if self.mode.find("IN") >= 0:
             self.pin = Pin(pin, Pin.IN)
@@ -230,36 +169,31 @@ class Sensor:
             #Fix to set publish values even if no change in state
             self.setstate(False)
             self.IN(None)
-            print(self.mode, " GPIO ", pin, " setup complete ...")
 
         if self.mode == "DHT":
             self.pin = dht.DHT22(Pin(pin))
             self.temp = 0.0
             self.humidity = 0.0
             self.DHT("Setup")
-            print("DHT GPIO ", pin, " setup completed")
-
+ 
         if self.mode == "PWM":     
             self.pin = PWM(Pin(pin))
             self.setvalue(0)
             #self.PWM(None)
-            print("PWM GPIO ", pin, " setup complete ...")
         
         if self.mode == "OUT":     
             self.pin = Pin(pin, Pin.OUT)
             self.OUT(False)
-            print("OUT GPIO ", pin, " setup complete ...")
         
         if self.mode == "VS":     
             self.VS(self.value)
-            print("VS ",self.name, " setup complete ... ")
-        
+
         if self.mode == "ADC":     
             self.pin = ADC(0)
+            self.k = 0.003028
             self.setvalue(0)
             self.ADC("Setup")
-            print("ADC setup complete ...")
-
+ 
         if self.poll is not None:
             self.timer = Timer(-1)
             if callback is None:
@@ -268,12 +202,15 @@ class Sensor:
             else:
                 self.timer.init(period=self.poll, mode=Timer.PERIODIC, callback=self.callback)
                 #print("Using callback: ",self.callback)
-        
+
+        print("{} Sensor {} - setup complete ...".format(self.mode,self.name))
         Sensor.list.append(self)
 
-ap = network.WLAN(network.AP_IF)
-ap.active(False)
-uptime = Sensor("uptime", poll=60000, callback=Sensor.UPTIME, diff=time.time(), initval=0)
-wifi = Sensor("rssi", poll=60000, callback=Sensor.RSSI, diff=2, initval=-65)
-memfree = Sensor("memfree", poll=60000, callback=Sensor.MEMFREE, diff=500, initval=mem_free())
+uptime = Sensor("uptime", "UPTIME", poll=60000, diff=time.time(), initval=0)
+wifi = Sensor("rssi", "RSSI", poll=60000, diff=2, initval=-65)
+memfree = Sensor("memfree", "MEMFREE", poll=60000, diff=500, initval=mem_free())
+heartbeat = Sensor("hb", "MQTT", initval={}, topic="/heartbeat")
+init = Sensor("init", "MQTT", initval={}, topic="init")
+set = Sensor("set", "MQTT", initval={}, topic="set")
 wifi.pubneeded = True
+
