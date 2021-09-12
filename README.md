@@ -16,15 +16,32 @@ The bootloader is a stripped down version of the httpclient code and includes so
 ### main
 Primary purpose is to decide whether to run the "updater" code or start the node. This is done based on RTC values (set before reboot) or the state of the configuration
 
+### secrets
+This file contains what you would expect and is imported by "config". MQTT server/creds and topics. Wifi name/password is never re-entered and only setup during bootloader run. TODO: item might be to add wifi name/pwd change support.
+
+```
+# secrets.py
+
+def version():
+    return "vv"
+
+mqttuser = "username"
+mqttpass = "pwd"
+mqttserver = "192.168.x.x"
+custom_topics = ("global/set","global/heartbeat")
+hasstopic = "homeassistant"
+code_url = "http://nn.nn.nn.nn:80/local/code/"
+```
+
 ### config
 Config contains some core functions to maintain the RTC flags and import other modules based on version #. Versioning is done by appending a version number to the name of each .py file (ie. name0.py or name20.py). As new versions are updated on the web server, they are copied by the updater script and then loaded according to the <macaddr> or <macaddr>.alt file that is saved on the uController. 
 
-### <macaddr> (aka node config file)
-Two files store (in json format) the names and versions for the node to use. the primary is named simply as the MacAddress of the node. The secondary is the same with .alt appended. During an update, the primary is moved to .alt and the new primary created based on what was downloaded/seen from the server.
+### \<macaddr\> (aka node config file)
+Two files stored (in json format) the names and versions for the node to use. The primary is named simply as the MacAddress of the node. The secondary is the same but with .alt appended. During an update, the primary is moved to .alt and the new primary created based on what was downloaded from the server.
 
 If an update fails, the secondary is loaded (which should just restart the node with the old versions).
 
-The node name itself is stored in this file, which is used to start the nodenameNN.py accordingly.
+The node name itself is stored in this file, which is used to start the nodenameNN.py accordingly. See the format of this file below in the web components section.
 
 ### RTC values
 The RTC memory was used to maintain some state across restarts, as it was necessary to kick off an update from the network, reboot and then start the update due to memory constraints (can't import updater/httpclient at the same time as all the node files)
@@ -60,13 +77,14 @@ Technically, the node script should never end. If it does, the config.importer()
 This module loads all other sensors as needed (based on what is in the node config file). It was originally one big file that became impossible to import. Each sensor class is now a separate file with some grouping if it makes sense (like gpiobase). This also helps save memory for sensors that need more user space memory.
 
 Currently defined:
-**gpiobase** - includes Analog (ADC), Input (GPIO input) and Switch (GPIO output)
-**Value** - Any type of value: int, float, str, bool, tuple
-**Light** - Homeassistant light device (requires led.py or equiv.)
-**dht** - support for dht11 or dht22 temp/humidity
-**Ina219** - I2C based Current sensor
-**bootloader** - Access to RTC values
-**Stats** - systems stats (wifi signal, mem_free and uptime)
+
+- **gpiobase** - includes Analog (ADC), Input (GPIO input) and Switch (GPIO output)
+- **Value** - Any type of value: int, float, str, bool, tuple
+- **Light** - Homeassistant light device (requires led.py or equiv.)
+- **dht** - support for dht11 or dht22 temp/humidity
+- **Ina219** - I2C based Current sensor
+- **bootloader** - Access to RTC values
+- **Stats** - systems stats (wifi signal, mem_free and uptime)
 
 sensors is the basis for creating sensors in your nodenameNN.py. They must be created before instantiating the HassMqtt Class. This is because HassMqtt uses the list of sensors to connect to MQTT, subscribe and publish. It is theoretically possible to add to the list and force a "reconnect", but not tested and could result in churn on the Homeassistant side.
 
@@ -87,12 +105,12 @@ This module maintains communication to the MQTT server, updating sensors when in
 ### updater
 This is the module that maintains the files in flash according to the node config file it downloads from the web server. I use Homeassistant's web server since it's already there and FTP files to it as needed.
 
-When an update RTC flag is set, it downloads two files from the web server: "<macaddr>.config" and "latestversions". Between these two files, it builds a dictionary of files, compares it to the current config and downloads anything new, building a new node config file (<macaddr>) described above. If any errors occur during an update, the node config file is not touched and RTC flags are set so that once restarted, you can see the results in Homeassistant.
+When an update RTC flag is set, it downloads two files from the web server: "<macaddr>.config" and "latestversions". Between these two files, it builds a dictionary of files, compares it to the current config and downloads anything new, building a new node config file (\<macaddr\>) described above. If any errors occur during an update, the node config file is not touched and RTC flags are set so that once restarted, you can see the results in Homeassistant.
 
-## Components (Web server)
+## Web Server Components
 The only file needed to configure a node is the one named using the MacAddress. This can reference all the files needed. To make updating core files easier, use the "latestversions" to set global versions for files (see example below)
 
-### <macaddr>.config
+### \<macaddr\>.config
 The node config file is json formatted with the node name and files it should use. It looks like this:
 
 ```
@@ -105,7 +123,7 @@ The node config file is json formatted with the node name and files it should us
 
 In the example above, the node is named "mysensor" which is what you will see in Homeassistant and there are two files it will use, one is the main user node script named "mysensor". Updater will expect to find "mysensor5.py" on the web server by appending the version to the name and adding ".py". The "sensors" file shown above uses "latest" which will look in the "latestversions" file (see below) for the version to use. By using "latest" for most of the files, you can update the latestversions and push an update out to all your sensors (Yay!).
 
-latestversions
+### latestversions
 This file is also json formatted and is a list of more file names and versions that are used to replace "latest" in the node config file. One important note is the use of "!" as "config" does in the example below.
 
 ```
@@ -118,6 +136,6 @@ This file is also json formatted and is a list of more file names and versions t
 
 Here, config is at version "5" but config is a special script that is loaded using the stock "import" and not "config.importer()" (Why!?! because how could it load itself?). The "!" exclamation tells updater to copy config5.py from the web server and save it as "config.py" on the uController. 
 
-** Use "!" CAREFULLY - There is no undo... **
+### Use "!" CAREFULLY - There is no undo...
 
 I use this only for files that need it or for some basic utilities that rarely need updating.
