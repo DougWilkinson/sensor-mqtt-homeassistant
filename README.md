@@ -34,9 +34,9 @@ code_url = "http://nn.nn.nn.nn:80/local/code/"
 ```
 
 ### config
-Config contains some core functions to maintain the RTC flags and import other modules based on version #. Versioning is done by appending a version number to the name of each .py file (ie. name0.py or name20.py). As new versions are updated on the web server, they are copied by the updater script and then loaded according to the <macaddr> or <macaddr>.alt file that is saved on the uController. 
+Config contains some core functions to maintain the RTC flags and import other modules based on version #. Versioning is done by appending a version number to the name of each .py file (ie. name0.py or name20.py). As new versions are updated on the web server, they are copied by the updater script and then loaded according to the \<macaddr\> or \<macaddr\>.alt file that is saved on the uController. 
 
-### \<macaddr\> (aka node config file)
+### \macaddr\> (aka node config file)
 Two files stored (in json format) the names and versions for the node to use. The primary is named simply as the MacAddress of the node. The secondary is the same but with .alt appended. During an update, the primary is moved to .alt and the new primary created based on what was downloaded from the server.
 
 If an update fails, the secondary is loaded (which should just restart the node with the old versions).
@@ -105,7 +105,7 @@ This module maintains communication to the MQTT server, updating sensors when in
 ### updater
 This is the module that maintains the files in flash according to the node config file it downloads from the web server. I use Homeassistant's web server since it's already there and FTP files to it as needed.
 
-When an update RTC flag is set, it downloads two files from the web server: "<macaddr>.config" and "latestversions". Between these two files, it builds a dictionary of files, compares it to the current config and downloads anything new, building a new node config file (\<macaddr\>) described above. If any errors occur during an update, the node config file is not touched and RTC flags are set so that once restarted, you can see the results in Homeassistant.
+When an update RTC flag is set, it downloads two files from the web server: \<macaddr\>.config and latestversions. Between these two files, it builds a dictionary of files, compares it to the current config and downloads anything new, building a new node config file (\<macaddr\>) described above. If any errors occur during an update, the node config file is not touched and RTC flags are set so that once restarted, you can see the results in Homeassistant.
 
 ## Web Server Components
 The only file needed to configure a node is the one named using the MacAddress. This can reference all the files needed. To make updating core files easier, use the "latestversions" to set global versions for files (see example below)
