@@ -7,7 +7,7 @@ The driver for micropython was to learn python, not because it's better in some 
 
 The interaction between the sensor device and Homeassistant is shown below and described in more detail following that. This readme is only an overview. More detailed documentation is needed but unless anyone actually asks for it, I do not plan to do much more here.
 
-!(./hass-mqtt-sensor-overview.jpg)
+![overview image](./hass-mqtt-sensor-overview.jpg)
 
 The latest iteration of code includes a means to automatically update .py files via a web server using http requests. No authentication or code verification is being done here and on the esp8266 platform, probably never will be. It's added overhead that I can't afford to keep code size small.
 
