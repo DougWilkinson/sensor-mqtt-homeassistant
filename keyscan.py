@@ -1,6 +1,6 @@
 # keyscan.py
 
-import machine
+from machine import Pin, I2C
 import mcp23017
 import time
 
