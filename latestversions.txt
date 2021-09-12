@@ -1,0 +1,27 @@
+{
+    "------ Common": "",
+    "sensor": "17",
+    "main": "!13",
+    "hassmqtt": "17",
+    "updater": "13",
+    "config": "!16",
+    "boot": "!0",
+    "re": "!0",
+    "secrets": "!13",
+    "webrepl_cfg": "!0",
+    "httpclient": "!0",
+    "wifi": "!0",
+    "------- Nodes": "",
+    "test": "7",
+    "pillbox": "3",
+    "ledclock": "0",
+    "bigclock": "1",
+    "clock": "0",
+    "quest2": "0",
+    "smartcharger": "10",
+    "matrix": "7",
+    "ledmatrix": "!1",
+    "font6a": "!0"
+    "backdoor": "1"
+    "stepclass": "2"
+}

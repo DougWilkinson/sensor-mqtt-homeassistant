@@ -1,3 +1,4 @@
+# usensor.py
 from machine import Pin,Timer,ADC,reset_cause
 import time
 import config
@@ -6,8 +7,12 @@ from gc import mem_free
 import dht
 
 def version():
-    return "1" 
-    # 1 Added persist() method and flags initvalseen/persist for MQTT
+    return "0" 
+    # 0: Added setpersist() method and flags initvalseen/persist for MQTT
+    # Fix or change on/off names for anything boolean (True/False)
+    # Add units of measurement
+    # Add templates for config values '{{ "name": "{}", "cmd_t": "{}", "stat_t": "{}" }}'
+    # consider using "numbers" instead of sensors? or adding numbers - do numbers "graph?"
 
 class Sensor:
     import network
@@ -17,7 +22,8 @@ class Sensor:
     mqttlist = {}
         
     class MQTT:
-        def __init__(self, name, mqttclass, initval, diff=0, minval=None, maxval=None):
+        def __init__(self, name, mqttclass, initval, diff=0, 
+                    minval=None, maxval=None, units=None, template=None):
             if name in Sensor.mqttlist:
                 print("Name {} exists, must be unique!".format(name))
                 return
@@ -35,9 +41,11 @@ class Sensor:
             self.diff = diff
             self.minval = minval
             self.maxval = maxval
+            self.template = template
+            self.units = units
             Sensor.mqttlist[name] = self
 
-        def persist(value=True):
+        def setpersist(self, value=True):
             self.persist = value
 
         def set(self, newval):
@@ -64,13 +72,24 @@ class Sensor:
                 self.pubneeded = True
 
     class vSensor:
+        
+        #### EDITING HERE, thinking about adding units and then wondering
+        # if I should restructure this even more to decouple classes from
+        # main Sensor class? think about how this could run from the main
+        # node, import usensor, then have Sensors be a super class that 
+        # manages all the others? 
+        # Sensor.mqtt(vSensor('name', etc)) 
+        # Could you have all types of sensors with only "__init__ to call
+        # for creation? define the attributes and hardware/callbacks only?
+        # # 
 
         def __init__(self, name, initval, diff=0, minval=None, maxval=None, 
-                    polling=None, callback=None):
+                    polling=None, callback=None, units=None):
 
             # vSensor only has one value, so call it 'mqtt'
             self.value = initval
-            self.mqtt = Sensor.MQTT(name, 'sensor', initval, diff, minval, maxval) 
+            self.mqtt = Sensor.MQTT(name, 'sensor', initval, diff, 
+                                    minval, maxval, units) 
             self.timer = Timer(-1)
             self.timer.init(period=100, mode=Timer.PERIODIC, callback=self.update) 
 
@@ -203,7 +222,7 @@ for name in config.flagnames:
 bootflags = Sensor.vDict(flagdict, polling=1000, callback=config.set)
 
 # Misc. system stats values
-statslist = { "resetcause": 0, "uptime": 0, "rssi": 0, "memfree": 0 }
+statslist = { "resetcause": 0, "uptime": 0, "rssi": 0, "memfree": 0, "mqttreconnects": 0 }
 mqtt = {} 
 start_time = time.time()
 

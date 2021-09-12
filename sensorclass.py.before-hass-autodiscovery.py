@@ -7,7 +7,6 @@ from gc import mem_free
 
 def version():
     return "8"  # Add versions to published info (not started)
-    # adding HASS autodiscovery
 
 class Sensor:
 
@@ -144,8 +143,6 @@ class Sensor:
         self.mode = mode
         self.save = save
         self.pin = pin
-        self.device_class = None
-        self.component = "sensor" 
         self.pubtopic = pubtopic
         self.subtopic = subtopic
         self.pubneeded = True
@@ -160,15 +157,9 @@ class Sensor:
             if diff is None:
                 self.diff = 0
 
-        if initval is not None and type(initval) is not dict:
+        if initval is not None:
             self.setvalue(initval)
 
-        if self.mode == "MULTI":
-            self.value = initval
-            self.subs = {}
-            for sensor in initval:
-                self.subs[sensor] = Sensor(sensor, initval=0)
-                
         if self.mode == "SYS":
             self.publish = {}
             self.starttime = time.time()
@@ -183,7 +174,6 @@ class Sensor:
             self.callback = self.BOOTFLAG
 
         if self.mode == "AMP":
-            self.device_class = "current"
             self.address = 0x40
             self.write_register(0x05, 16793)
             self.write_register(0, 2463)
@@ -192,7 +182,6 @@ class Sensor:
             self.callback = self.AMP
 
         if self.mode.find("IN") >= 0:
-            self.component = "binary_sensor"
             self.pin = Pin(pin, Pin.IN)
             if self.mode == "INP":
                 self.pin = Pin(pin, Pin.IN, Pin.PULL_UP)
@@ -202,8 +191,6 @@ class Sensor:
             self.IN(None)
 
         if self.mode == "DHT":
-            # Split these as different device classes?
-            self.component = "sensor"
             self.pin = dht.DHT22(Pin(pin))
             self.DHT("Setup")
             self.callback = self.DHT

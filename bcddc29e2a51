@@ -1,0 +1,9 @@
+{
+    "nodename": "smartcharger",
+    "smartcharger": "latest",
+    "sensorclass": "latest",
+    "testmain": "latest",
+    "mqttclass": "latest"
+    "updater": "latest"
+    "config": "latest"
+}
