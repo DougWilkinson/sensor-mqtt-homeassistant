@@ -1,15 +1,17 @@
-# Why this?
-This project was the result of an evolution through home automation and sensors. The ESP8266 has fascinated me from the beginning and started with Arduino/mqtt and is now focused on micropython/mqtt for communication with Homeassistant.
-
-The driver for micropython was to learn python, not because it's better in some way. It has significant limitations on code size and speed, but for the majority of my sensors and controllers, it is more than adequate.
+# micropython based sensors?
+This repository is the result of an evolution through home automation and the ESP8266. I hope it is useful to someone. There are other platforms that do not require this level of effort (ESPHome or Tasmota) that can do a lot with little coding/effort. I did this because it's a hobby and fun, not because it was easier. It will always be a work in progress.
 
 ## Overview
 
-The interaction between the sensor device and Homeassistant is shown below and described in more detail following that. This readme is only an overview. More detailed documentation is needed but unless anyone actually asks for it, I do not plan to do much more here.
+The main design includes:
+- Updates to .py modules using Http (Homeassistant has a web server built in that I use)
+- Basic sensor types predefined that are auto-discoverable by Homeassistant through MQTT)
+- Modular design to extend sensors to include motor controls or other custom devices
+- Lots of examples of actual sensors/devices I use for curtains, leds, weight, temperature, etc.
 
 ![overview image](./hass-mqtt-sensor-overview.jpg)
 
-The latest iteration of code includes a means to automatically update .py files via a web server using http requests. No authentication or code verification is being done here and on the esp8266 platform, probably never will be. It's added overhead that I can't afford to keep code size small.
+** Disclaimer: This code is for learning purposes only. Use at your own risk.
 
 ## Components (uController)
 
@@ -38,7 +40,7 @@ code_url = "http://nn.nn.nn.nn:80/local/code/"
 ```
 
 ### config
-Config contains some core functions to maintain the RTC flags and import other modules based on version #. Versioning is done by appending a version number to the name of each .py file (ie. name0.py or name20.py). As new versions are updated on the web server, they are copied by the updater script and then loaded according to the \<macaddr\> or \<macaddr\>.alt file that is saved on the uController. 
+Config contains some core functions to maintain the RTC (bootflags) and import other modules based on version #. Versioning is done by appending a version number to the name of each .py file (ie. name0.py or name20.py). As new versions are updated on the web server, they are copied by the updater script and then loaded according to the \<macaddr\> or \<macaddr\>.alt file that is saved on the uController. 
 
 ### \<macaddr\> (aka node config file)
 Two files stored (in json format) the names and versions for the node to use. The primary is named simply as the MacAddress of the node. The secondary is the same but with .alt appended. During an update, the primary is moved to .alt and the new primary created based on what was downloaded from the server.
@@ -46,11 +48,6 @@ Two files stored (in json format) the names and versions for the node to use. Th
 If an update fails, the secondary is loaded (which should just restart the node with the old versions).
 
 The node name itself is stored in this file, which is used to start the nodenameNN.py accordingly. See the format of this file below in the web components section.
-
-### RTC values
-The RTC memory was used to maintain some state across restarts, as it was necessary to kick off an update from the network, reboot and then start the update due to memory constraints (can't import updater/httpclient at the same time as all the node files)
-
-These values are documented in more detail below.
 
 ### nodenameNN.py (node script)
 Each node has a unique main script that loads everything else (mostly). The general format is shown below: 
@@ -85,14 +82,14 @@ Currently defined:
 - **gpiobase** - includes Analog (ADC), Input (GPIO input) and Switch (GPIO output)
 - **Value** - Any type of value: int, float, str, bool, tuple
 - **Light** - Homeassistant light device (requires led.py or equiv.)
-- **dht** - support for dht11 or dht22 temp/humidity
+- **Dht** - support for dht11 or dht22 temp/humidity
 - **Ina219** - I2C based Current sensor
-- **bootloader** - Access to RTC values
+- **Bootflags** - Access to RTC values
 - **Stats** - systems stats (wifi signal, mem_free and uptime)
 
 sensors is the basis for creating sensors in your nodenameNN.py. They must be created before instantiating the HassMqtt Class. This is because HassMqtt uses the list of sensors to connect to MQTT, subscribe and publish. It is theoretically possible to add to the list and force a "reconnect", but not tested and could result in churn on the Homeassistant side.
 
-The only bundled sensors are the bootloader and system stats (which are optional if memory is a concern). To update remotely, you have to instantiate the "bootloader" sensor in your node script. The system stats are really optional.
+The only bundled sensors are the Bootflags and system (Stats) which are optional if memory is a concern. To update remotely, though, you have to instantiate the "Bootflags" sensor in your node script. The system stats are really optional.
 
 ### mqttdevice
 This module handles the Class for mqtt related information for each sensor defined in "sensors". A list (dictionary) is created that is used for handling subscribing, publishing and updating.
