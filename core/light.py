@@ -4,8 +4,8 @@ import time
 import config
 
 def version():
-	return "0"
-	# 0: break out from sensor.py
+	return "2"
+	# 2: added on/off methods
 
 Device = config.Device
 
@@ -20,12 +20,19 @@ class Light:
 		self.timer = Timer(-1)
 		self.timer.init(period=200, mode=Timer.PERIODIC, callback=self.update) 
 
+	def on(self):
+		self.state.set(True)
+		self.state.updatevalue = True
+
+	def off(self):
+		self.state.set(False)
+		self.state.updatevalue = False
+
 	def update(self, timer):
 		if self.state.updatevalue or self.bright.updatevalue or self.rgb.updatevalue:
 
 			if self.bright.updatevalue:
 				self.bright.updatevalue = False
-				self.rgb.set("{},{},{}".format(self.bright.value,self.bright.value,self.bright.value))
 				self.bright.changed = True
 			if self.rgb.updatevalue:
 				self.rgb.updatevalue = False
@@ -35,6 +42,7 @@ class Light:
 				self.state.changed = True
 			if self.state.value:
 				r = self.rgb.value.split(",")
-				self.light.set_color( ( int(r[0]),int(r[1]),int(r[2]) ) )
+				b = self.bright.value/255
+				self.light.set_color( ( int(int(r[0])*b),int(int(r[1])*b),int(int(r[2])*b) ) )
 			else:
 				self.light.set_color((0,0,0))

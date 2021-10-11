@@ -3,13 +3,10 @@ from machine import Pin
 import time
 import config
 import random
-import gc
 
 def version():
-    return "6"
-    # 6: using new sensors module
-
-gc.collect()
+    return "10" 
+    # 10: motion triggered reset timer
 
 sensors = config.importer('sensors')
 hassmqtt = config.importer('hassmqtt')
@@ -27,9 +24,10 @@ desired = sensors.Value("desired", initval=0)
 position = sensors.Value("position", initval=0)
 backoff = sensors.Value("backoff", initval=350)
 
-strip = led.WS2812(0,20)
+strip = led.WS2812(0,25)
 
 lights = sensors.Light("cabinet", strip)
+night = sensors.Light("night", strip)
 mode = sensors.Value("mode", "auto")
 motion = sensors.Input("motion",5)
 ontime = sensors.Value("ontime", 60, attrs={"Value":"LED on time in seconds"} )
@@ -37,8 +35,6 @@ ontime = sensors.Value("ontime", 60, attrs={"Value":"LED on time in seconds"} )
 # limitmode = switch or encoder
 limitmode = sensors.Value("limitmode",initval = "switch")
 limitmode.triggered = True
-
-gc.collect()
 
 hass = hassmqtt.HassMqtt(config.nodename,sensors)
 
@@ -51,14 +47,23 @@ def main():
         hass.Spin()
         strip.spin()
 
-        if mode.value == "auto" and motion.triggered:
+        if mode.value == "auto" and not lights.state.value and (motion.triggered or night.state.value):
             motion.triggered = False
-            strip.set_color((0,30,30))
+            night.on()
             mode.set("timer")
             lastmotion = time.time()
 
+        if motion.triggered:
+            motion.triggered = False
+            lastmotion = time.time()
+
+        if lights.state.value and mode.value == "timer":
+            motion.triggered = False
+            mode.set("auto")
+
         if not hass.connected or (mode.value == "timer" and time.time() - lastmotion > ontime.value):
             mode.set("auto")
+            night.off()
             strip.set_color()
 
         if limitmode.triggered:
