@@ -2,9 +2,8 @@
 
 import config
 
-def version():
-    return "14"
-    # 14: debug mode to not reboot
+version = { 'version': "20", 
+            'changes' : "streamlined" }
 
 # Increment reboot counter
 config.set('reboots', config.get('reboots') + 1 ) 
@@ -16,9 +15,9 @@ if config.get('update') == 1 and config.get('update_result') == 0:
     updater.update()
     config.reboot()
 
-# Start node if good config is found and not just updated
+# Start loading sensors if good config
 if config.nodename != '' and config.get('update') != 3:
-    print("Starting Sensor: ", config.nodename,"\n")
+    print("Loading sensors: ", config.nodename,"\n")
     for f in config.current.keys():
         print("{}:{}".format(f,config.current[f]))
     config.importer(config.nodename)
