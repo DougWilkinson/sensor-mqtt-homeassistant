@@ -4,25 +4,25 @@ import config
 import random
 
 def version():
-    return "3"
-    # 3: changed 'door' name to not match nodename
+    return "4"
+    # 4: updated to sensors
 
-sensor = config.importer('sensor')
-stats = sensor.Stats()
-bootflags = sensor.BootFlags()
+sensors = config.importer('sensors')
+stats = sensors.Stats()
+bootflags = sensors.BootFlags()
 
 hass_mod = config.importer('hassmqtt')
 HassMqtt = hass_mod.HassMqtt
 
-door = sensor.Input("door", 4, pullup=False)
+door = sensors.Input("door", 4, pullup=False)
 #backdoor = sensor.Input("backdoor", 4, pullup=True)
 
-curtains = sensor.Sensor("curtains", initval="init" )
-desired = sensor.Sensor("desired", initval=0)
-position = sensor.Sensor("position", initval=0)
-backoff = sensor.Sensor("backoff", initval=350)
+curtains = sensors.Value("curtains", initval="init" )
+desired = sensors.Value("desired", initval=0)
+position = sensors.Value("position", initval=0)
+backoff = sensors.Value("backoff", initval=350)
 
-hass = HassMqtt(config.nodename,sensor)
+hass = HassMqtt(config.nodename,sensors)
 
 stepclass = config.importer('stepclass')
 slider = stepclass.Stepper(inverted=False, pullups=True, backoff=backoff.value)

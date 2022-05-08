@@ -3,23 +3,23 @@ import time
 import config
 
 def version():
-    return "3"
-    # 3: switched to sensors/Value
+    return "4"
+    # 4: fixed sensor to sensors
 
-sensor = config.importer('sensors')
-stats = sensor.Stats()
-bootflags = sensor.BootFlags()
+sensors = config.importer('sensors')
+stats = sensors.Stats()
+bootflags = sensors.BootFlags()
 
 hass_mod = config.importer('hassmqtt')
 HassMqtt = hass_mod.HassMqtt
 
-brightness = sensor.Value("brightness", initval=40)
-motion = sensor.Input("motion",5)
+brightness = sensors.Value("brightness", initval=40)
+motion = sensors.Input("motion",5)
 
 clock_mod = config.importer('clock','Clock')
 Clock = clock_mod.Clock
 
-hass = HassMqtt(config.nodename,sensor)
+hass = HassMqtt(config.nodename,sensors)
 
 def main():
     thistime = Clock()

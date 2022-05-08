@@ -4,21 +4,19 @@ import time
 import config
 
 def version():
-	return "2"
-	# 2: added on/off methods
+	return "3"
+	# 4: Support for nightlight - updated led1.py.
 
 Device = config.Device
 
 class Light:
-	def __init__(self, name, light, attrs={}):
+	def __init__(self, name, led, motion=None, ontime=None, attrs={}, poll=-1):
 
-		self.light = light
+		self.led = led
 		self.triggered = False
-		self.state = Device(name, 'light', False, attrs)
+		self.state = Device(name, 'light', False, attrs, poll=poll, poller=self.update)
 		self.bright = Device(name + "_bri", 'light', 0, config=False)
 		self.rgb = Device(name + "_rgb", 'light', "0,0,0", config=False)
-		self.timer = Timer(-1)
-		self.timer.init(period=200, mode=Timer.PERIODIC, callback=self.update) 
 
 	def on(self):
 		self.state.set(True)
@@ -28,7 +26,7 @@ class Light:
 		self.state.set(False)
 		self.state.updatevalue = False
 
-	def update(self, timer):
+	def update(self):
 		if self.state.updatevalue or self.bright.updatevalue or self.rgb.updatevalue:
 
 			if self.bright.updatevalue:
@@ -43,6 +41,6 @@ class Light:
 			if self.state.value:
 				r = self.rgb.value.split(",")
 				b = self.bright.value/255
-				self.light.set_color( ( int(int(r[0])*b),int(int(r[1])*b),int(int(r[2])*b) ) )
+				self.led.set_color( ( int(int(r[0])*b),int(int(r[1])*b),int(int(r[2])*b) ) )
 			else:
-				self.light.set_color((0,0,0))
+				self.led.set_color((0,0,0))

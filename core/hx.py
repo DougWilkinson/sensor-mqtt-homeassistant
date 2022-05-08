@@ -1,34 +1,37 @@
 # hx.py
 import time
 from machine import Pin,Timer
+import config
 
 def version():
-    return "2"
-    # 2: combined value into polling 
+    return "4"
+    # 4: Major update to make a real sensor and combine attributes(Breaking changes) 
 
 @micropython.native
 def toggle(p):
     p.value(1)
     p.value(0)
 
+Device = config.Device
+
 class HX711:
-    def __init__(self, pd_sck=4, dout=5, gain=128, sf=229, min=-10000, max=10000, diff=5):
-        self.gain = gain
-        self.SCALING_FACTOR = sf
+    def __init__(self, name="scale", statename="state", pd_sck=4, dout=5, min=-10000, 
+                max=10000, lowhx=0, diff=5, poll=1):
+        self.gain = 128
+        self.SCALING_FACTOR = 229
         self.dataPin = Pin(dout, Pin.IN)
         self.pdsckPin = Pin(pd_sck, Pin.OUT, value=0)
         self.powerUp()
-        self.diff = diff
-        self.min = min
-        self.max = max
-        self.value = self.raw_read()
-        if self.value <= self.min:
-            self.value = self.min
-        if self.value >= self.max:
-            self.value = self.max
-        self.values = [self.value]*5
-        self.triggered = False
-        self.start()
+        # "scale" that also does the polling
+        self.hx = Device(name, "sensor", initval=self.raw_read(), diff=diff,
+                    minval=min, maxval=max, units="hx", poll=poll, 
+                    poller=self.update)
+        # "low" or "good" threshold
+        self.lowhx = Device("lowhx", 'sensor', lowhx)
+        # min change to update
+        self.diffhx = Device("diffhx", 'sensor', diff)
+        self.values = [self.hx.value]*5
+        self.state = Device(statename, 'sensor', self.getstate())
 
     def powerUp(self):
         self.pdsckPin.value(0)
@@ -54,11 +57,11 @@ class HX711:
         if neg: my = my - (1<<23)
         return round(my/self.SCALING_FACTOR, 1)
 
-    def poll(self, timer):
+    def update(self):
         newhx = self.raw_read()
         if newhx == 0:
             return
-        if newhx >= self.min and newhx <= self.max:
+        if newhx >= self.hx.minval and newhx <= self.hx.maxval:
             self.values.pop()
             self.values.insert(0,newhx)
         top = self.values.copy()
@@ -66,16 +69,12 @@ class HX711:
         top.pop()
         top.reverse()
         top.pop()
-        if abs(self.value - sum(top)/len(top)) > self.diff:
-            self.value = sum(top)/len(top)
-            self.triggered = True
-
-    def start(self, polling=500):
-        self.timer = Timer(-1)
-        self.timer.init(period=polling, mode=Timer.PERIODIC, callback=self.poll)
+        if abs(self.hx.value - sum(top)/len(top)) > self.diffhx.value:
+            self.hx.set(sum(top)/len(top))
+            self.state.set(self.getstate())
     
-    def stop(self):
-        try:
-            self.timer.deinit()
-        except:
-            print("polling not started or error ...")
+    def getstate(self):
+        if self.hx.value < self.lowhx.value:
+            return "low"
+        else:
+            return "good"

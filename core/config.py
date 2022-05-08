@@ -8,23 +8,8 @@ import time
 import os,sys
 
 def version():
-    return "20"
-    # 20: logging for failed importer  - READ IN DEBUG FILE w/ limited size?
-    # Want to limit problems loading config, how to only read a few lines?
-
-ap = network.WLAN(network.AP_IF)
-ap.active(False)
-
-wlan = network.WLAN(network.STA_IF)
-wlan.active(True)
-ssid = wlan.config('essid')
-espMAC = str(ubinascii.hexlify(network.WLAN().config('mac')).decode())
-
-rtc = machine.RTC()
-flagnames = ["checksum","magic","update","update_result","config","network","reboots"]
-boot_flags = []
-
-current = {}
+    return "23"
+    # 23: changed to soft_reset for esp32?
 
 try:
     import secrets
@@ -35,6 +20,24 @@ except:
     print("Secrets not found!")
     raise
 
+ap = network.WLAN(network.AP_IF)
+ap.active(False)
+
+wlan = network.WLAN(network.STA_IF)
+wlan.active(True)
+if wlan.config('essid') == '':
+    wlan.connect(secrets.wifiname, secrets.wifipass)
+
+ssid = wlan.config('essid')
+espMAC = str(ubinascii.hexlify(network.WLAN().config('mac')).decode())
+
+rtc = machine.RTC()
+flagnames = ["checksum","magic","update","update_result","config","network","reboots"]
+boot_flags = []
+
+current = {}
+
+
 def reboot(msg=None, graceful=False):
     if graceful:
         clear('reboots')
@@ -42,7 +45,7 @@ def reboot(msg=None, graceful=False):
         print(i)
         time.sleep(1)
                  
-    machine.reset()
+    machine.soft_reset()
     while True:
         pass
 
@@ -91,6 +94,7 @@ def importer(module, use_version=True):
     except Exception as ImportError:
         f=open('debug','w')
         os.dupterm(f)
+        print(rtc.datetime())
         sys.print_exception(ImportError)
         os.dupterm(None)
         f.close()
@@ -135,9 +139,9 @@ while not wlan.isconnected() and time.time() - timeout < 20:
     print(".",end='')
 
 if wlan.isconnected():
-    print(" connected to: {} \n".format(ssid))
+    print("*** Connected to: {} \n".format(ssid))
     set('network')
 else:
     clear('network')
-    print(" failed to connect to: ",ssid)
+    print("*** Failed to connect to WIFI")
 

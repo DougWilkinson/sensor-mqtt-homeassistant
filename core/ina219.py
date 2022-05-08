@@ -4,8 +4,8 @@ import time
 import config
 
 def version():
-	return "0"
-	# 0: break out from sensor.py
+	return "1"
+	# 1: add polling support
 
 Device = config.Device
 
@@ -22,17 +22,15 @@ class Ina219:
 			register_value -= 65536
 		return register_value
 	
-	def __init__(self, name, pin, k=0.0000214292, diff=0.05, polling=5000):
+	def __init__(self, name, pin, k=0.0000214292, diff=0.05, poll=5):
 		self.pin = pin
 		self.address = 0x40
 		self.write_register(0x05, 16793)
 		self.write_register(0, 2463)
 		self.k = k
-		self.mqtt = Device(name, 'sensor', 0.0, diff=diff, minval=0, units="A")
-		self.update(None)
-		self.timer = Timer(-1)
-		self.timer.init(period=polling, mode=Timer.PERIODIC, callback=self.update) 
+		self.mqtt = Device(name, 'sensor', 0.0, diff=diff, minval=0, units="A", poll=poll, poller=self.update)
+		self.update()
 
-	def update(self, timer):
+	def update(self):
 		self.mqtt.set(round(self.read_register(0x04) * self.k,3))
 		self.value = self.mqtt.value

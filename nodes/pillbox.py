@@ -5,12 +5,12 @@ from machine import Pin
 from neopixel import NeoPixel
 
 def version():
-    return "6"
-    # 6: changed to ticks_diff() 
+    return "8"
+    # 8: invert to inverted 
 
-sensor = config.importer('sensor')
-stats = sensor.Stats()
-bootflags = sensor.BootFlags()
+sensors = config.importer('sensors')
+stats = sensors.Stats()
+bootflags = sensors.BootFlags()
 
 hass_mod = config.importer('hassmqtt')
 HassMqtt = hass_mod.HassMqtt
@@ -44,14 +44,14 @@ def showmedstatus(led, medstatuslast):
 ledpin = Pin(5, Pin.OUT)
 led = NeoPixel(ledpin, 2)
 
-medstatus = sensor.Sensor("meds", "Init" )
-brightness = sensor.Sensor("brightness", 15 )
-pills = sensor.Input("pills", 4, invert=True)
-buttonone = sensor.Input("buttonone", 14)
-buttontwo = sensor.Input("buttontwo", 12)
+medstatus = sensors.Value("meds", "Init" )
+brightness = sensors.Value("brightness", 15 )
+pills = sensors.Input("pills", 4, inverted=True)
+buttonone = sensors.Input("buttonone", 14)
+buttontwo = sensors.Input("buttontwo", 12)
 
 # Must define hass after all sensors defined!
-hass = HassMqtt(config.nodename,sensor) 
+hass = HassMqtt(config.nodename,sensors) 
 
 def main():
     medstatuslast = time.ticks_ms()

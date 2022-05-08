@@ -4,24 +4,23 @@ import time
 import config
 
 def version():
-	return "0"
-	# 0: break out from sensor.py
+	return "1"
+	# 1: Added poller support for sensors
 
 Device = config.Device
 
 class Value:
 	def __init__(self, name, initval=0, diff=0, minval=None, maxval=None, units=None, 
-				polling=None, callback=None, attrs={}):
+				callback=None, attrs={}, poll=-1):
 
 		self.value = initval
 		self.callback = callback
 		self.triggered = False
 		self.mqtt = Device(name, 'sensor', initval, diff, 
-								minval, maxval, units, attrs) 
-		self.timer = Timer(-1)
-		self.timer.init(period=100, mode=Timer.PERIODIC, callback=self.update) 
+						minval, maxval, units, attrs,
+						poll=poll, poller=self.update) 
 
-	def update(self, timer):
+	def update(self):
 		if self.mqtt.updatevalue:
 			self.value = self.mqtt.value
 			self.mqtt.updatevalue = False

@@ -5,12 +5,12 @@ import time
 import config
 
 def version():
-    return "2"
-    # 2: changed to ticks_diff() to solve rollover? similar to pillbox
+    return "3"
+    # 3: new sensors support
 
-sensor = config.importer('sensor')
-stats = sensor.Stats()
-bootflags = sensor.BootFlags()
+sensors = config.importer('sensors')
+stats = sensors.Stats()
+bootflags = sensors.BootFlags()
 
 hass_mod = config.importer('hassmqtt')
 HassMqtt = hass_mod.HassMqtt
@@ -18,10 +18,10 @@ HassMqtt = hass_mod.HassMqtt
 ledpin = Pin(5, Pin.OUT)
 led = NeoPixel(ledpin, 13)
 
-brightness = sensor.Sensor("brightness", initval=30)
-facelight = sensor.Sensor("facelight", initval=1)
+brightness = sensors.Value("brightness", initval=30)
+facelight = sensors.Value("facelight", initval=1)
 
-hass = HassMqtt(config.nodename,sensor)
+hass = HassMqtt(config.nodename,sensors)
 
 def main():
 

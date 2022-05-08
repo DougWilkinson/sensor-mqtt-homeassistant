@@ -4,22 +4,22 @@ import time
 import config
 
 def version():
-	return "0"
-	# 0: break out from sensor.py
+	return "2"
+	# 2: add poller support
 
 Device = config.Device
 
 class Dht:
 
-	def __init__(self, name, dht, polling=5000):
+	def __init__(self, name, dht, poll=5):
 		self.dht = dht
 		self.temp = Device(name + "_" + "temp", 
 							'sensor', 
 							0.0, 
-							diff=0.2, 
+							diff=0.3, 
 							minval=-50, 
 							maxval=130,
-							units = 'F') 
+							units = 'F', poll=poll, poller=self.update) 
 		self.humidity = Device(name + "_" + "humidity", 
 							'sensor', 
 							0, 
@@ -27,11 +27,9 @@ class Dht:
 							minval=0, 
 							maxval=100,
 							units = "%")
-		self.update(None)            
-		self.timer = Timer(-1)
-		self.timer.init(period=polling, mode=Timer.PERIODIC, callback=self.update) 
+		self.update()
 
-	def update(self, timer):
+	def update(self):
 		try:
 			self.dht.measure()
 			self.temp.set(round((self.dht.temperature() * 9 / 5) + 32,1))

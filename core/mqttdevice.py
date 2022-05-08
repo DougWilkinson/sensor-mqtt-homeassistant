@@ -4,15 +4,15 @@ import time
 import sys
 
 def version():
-	return "0"
-	# 0: created to break apart sensor.py
+	return "2"
+	# 2: added .published to allow dynamic adding of devices (BLE)
 
 list = {}
 	
 class Device:
 	def __init__(self, name, device_class, initval, diff=0, 
 				minval=None, maxval=None, units=None, attrs={}, 
-				config=True, local=False):
+				config=True, local=False, poll=0, poller=None):
 		if name in list:
 			print("Using existing object for {}".format(name))
 			return list[name]
@@ -28,7 +28,7 @@ class Device:
 		
 		# received new value (from mqtt), update for user
 		self.updatevalue = False
-
+		self.published = False
 		self.attrs = attrs
 		self.local = local
 		self.config = config
@@ -37,6 +37,9 @@ class Device:
 		self.minval = minval
 		self.maxval = maxval
 		self.units = units
+		self.poll = poll
+		self.poller = poller
+		self.lastpolled = time.time()
 		list[name] = self
 		if units is None:
 			units = ""

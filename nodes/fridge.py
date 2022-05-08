@@ -5,25 +5,25 @@ import dht
 import time
 
 def version():
-    return "1"
-    # 1: first real version 
+    return "2"
+    # 2: convert to sensors 
 
-sensor = config.importer('sensor')
-stats = sensor.Stats()
-bootflags = sensor.BootFlags()
+sensors = config.importer('sensors')
+stats = sensors.Stats()
+bootflags = sensors.BootFlags()
 
 hassmqtt = config.importer('hassmqtt')
 
 # real fridge freezer=14, fridge=12
 freezer_dht = dht.DHT22(Pin(14))
-freezer = sensor.Dht("freezer",freezer_dht)
+freezer = sensors.Dht("freezer",freezer_dht)
 
 fridge_dht = dht.DHT22(Pin(12))
-fridge = sensor.Dht("fridge",fridge_dht)
+fridge = sensors.Dht("fridge",fridge_dht)
 
-motion = sensor.Input("motion",13)
+motion = sensors.Input("motion",13)
 
-hass = hassmqtt.HassMqtt(config.nodename,sensor)
+hass = hassmqtt.HassMqtt(config.nodename,sensors)
 
 def main():
 
